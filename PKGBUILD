@@ -7,7 +7,7 @@ license=('GPL2')
 url="http://sipe.sf.net"
 # patches will be generated from launchpad-next branch of https://github.com/tieto/sipe
 # depends as I need them, some are in theory optional.
-depends=('gmime3' 'libpurple' 'glib2' 'libxml2' 'nss' 'dbus' 'farstream' 'gstreamer' 'gst-plugins-base' 'gst-plugins-bad' 'libnice-git' 'freerdp-with-shadow-server')
+depends=('gmime3' 'libpurple' 'glib2' 'libxml2' 'nss' 'dbus' 'farstream' 'gstreamer' 'gst-plugins-base' 'gst-plugins-bad' 'libnice-git' 'freerdp')
 makedepends=('git' 'intltool' 'pkg-config' 'flex')
 source=('git+https://repo.or.cz/siplcs.git#branch=mob'
         'https://github.com/tieto/sipe/commit/ac09f5eb7137c022370aa7ef24e02d08117eef12.patch'
