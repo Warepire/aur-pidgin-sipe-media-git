@@ -74,9 +74,9 @@ index 4bbfb3e..d6a1eed 100644
  		*d = c;
  
 +		res = wild_p_br_hack(res); /* WILD ADD */
- 	} else {
+ 	} else if (g_str_has_prefix(ms_text_format, "text/rtf")) {
  		char *tmp = res;
- 		res = g_markup_escape_text(res, -1); // as this is not html
+ 		res = sipe_rtf_to_html(res);
 -- 
 2.19.1
 
