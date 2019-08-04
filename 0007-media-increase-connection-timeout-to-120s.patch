@@ -1,0 +1,27 @@
+From 2085b4ae009b667ed391a9ef3c57469ac704f31c Mon Sep 17 00:00:00 2001
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Mon, 2 Jul 2018 11:52:32 +0200
+Subject: [PATCH 7/7] media: increase connection timeout to 120s
+
+Upstream-Status: Inappropriate [Not mine to merge]
+Patch-URI: https://github.com/tieto/sipe/commit/2085b4ae009b667ed391a9ef3c57469ac704f31c.patch
+---
+ src/core/sipe-media.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core/sipe-media.c b/src/core/sipe-media.c
+index 5512d89b..109224a8 100644
+--- a/src/core/sipe-media.c
++++ b/src/core/sipe-media.c
+@@ -106,7 +106,7 @@ struct sipe_media_stream_private {
+ #define SIPE_MEDIA_STREAM         ((struct sipe_media_stream *) stream_private)
+ #define SIPE_MEDIA_STREAM_PRIVATE ((struct sipe_media_stream_private *) stream)
+ 
+-#define SIPE_MEDIA_STREAM_CONNECTION_TIMEOUT_SECONDS 30
++#define SIPE_MEDIA_STREAM_CONNECTION_TIMEOUT_SECONDS 120
+ #define SIPE_MEDIA_CALL_RINGING_TIMEOUT_SECONDS 60
+ #define SIPE_MEDIA_CALL_TIMEOUT_SECONDS 120
+ 
+-- 
+2.21.0
+

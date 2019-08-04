@@ -1,0 +1,111 @@
+From ac09f5eb7137c022370aa7ef24e02d08117eef12 Mon Sep 17 00:00:00 2001
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Sat, 1 Dec 2018 22:06:04 +0100
+Subject: [PATCH 1/7] media: move filtering of broken codecs to SIPE core
+
+Upstream-Status: Inappropriate [Not mine to merge]
+Patch-URI: https://github.com/tieto/sipe/commit/ac09f5eb7137c022370aa7ef24e02d08117eef12.patch
+---
+ src/core/sipe-media.c     | 41 +++++++++++++++++++++++++++++++++++++--
+ src/purple/purple-media.c | 23 +---------------------
+ 2 files changed, 40 insertions(+), 24 deletions(-)
+
+diff --git a/src/core/sipe-media.c b/src/core/sipe-media.c
+index 7fc1794e..7b70d86f 100644
+--- a/src/core/sipe-media.c
++++ b/src/core/sipe-media.c
+@@ -426,13 +426,50 @@ get_encryption_policy(struct sipe_core_private *sipe_private)
+ 	return result;
+ }
+ 
++static GList *
++get_local_codecs(struct sipe_media_call_private *call_private,
++		 struct sipe_media_stream_private *stream_private)
++{
++	gboolean is_conference = g_strstr_len(SIPE_MEDIA_CALL->with,
++					      strlen(SIPE_MEDIA_CALL->with),
++					      "app:conf:audio-video:") != NULL;
++	GList *codecs = sipe_backend_get_local_codecs(SIPE_MEDIA_CALL,
++						      SIPE_MEDIA_STREAM);
++	GList *i;
++
++	for (i = codecs; i; i = i->next) {
++		struct sipe_backend_codec *codec = i->data;
++		char *name = sipe_backend_codec_get_name(codec);
++
++		if (/* Do not announce Theora. Its optional parameters are too
++		     * long, Communicator rejects such SDP message and does not
++		     * support the codec anyway. */
++		    sipe_strequal(name,"THEORA") ||
++		    /* For some yet unknown reason, A/V conferencing server
++		     * does not accept SIPE audio encoded with SIREN. We are
++		     * still able to decode incoming SIREN from server and with
++		     * MSOC client, bidirectional call using the codec works.
++		     * Until resolved, resort to PCMA or PCMU in conferences. */
++		    (is_conference && sipe_strequal(name,"SIREN"))) {
++			GList *tmp;
++			sipe_backend_codec_free(codec);
++			tmp = i->next;
++			codecs = g_list_delete_link(codecs, i);
++			i = tmp;
++		}
++
++		g_free(name);
++	}
++
++	return codecs;
++}
++
+ static struct sdpmedia *
+ media_stream_to_sdpmedia(struct sipe_media_call_private *call_private,
+ 			 struct sipe_media_stream_private *stream_private)
+ {
+ 	struct sdpmedia *sdpmedia = g_new0(struct sdpmedia, 1);
+-	GList *codecs = sipe_backend_get_local_codecs(SIPE_MEDIA_CALL,
+-						      SIPE_MEDIA_STREAM);
++	GList *codecs = get_local_codecs(call_private, stream_private);
+ 	SipeEncryptionPolicy encryption_policy =
+ 			get_encryption_policy(call_private->sipe_private);
+ 	guint rtcp_port = 0;
+diff --git a/src/purple/purple-media.c b/src/purple/purple-media.c
+index d589009e..52af4483 100644
+--- a/src/purple/purple-media.c
++++ b/src/purple/purple-media.c
+@@ -1204,33 +1204,12 @@ sipe_backend_get_local_codecs(struct sipe_media_call *media,
+ 	GList *codecs = purple_media_get_codecs(media->backend_private->m,
+ 						stream->id);
+ 	GList *i = codecs;
+-	gboolean is_conference = (g_strstr_len(media->with, strlen(media->with),
+-					       "app:conf:audio-video:") != NULL);
+ 
+-	/*
+-	 * Do not announce Theora. Its optional parameters are too long,
+-	 * Communicator rejects such SDP message and does not support the codec
+-	 * anyway.
+-	 *
+-	 * For some yet unknown reason, A/V conferencing server does not accept
+-	 * voice stream sent by SIPE when SIREN codec is in use. Nevertheless,
+-	 * we are able to decode incoming SIREN from server and with MSOC
+-	 * client, bidirectional call using the codec works. Until resolved,
+-	 * do not try to negotiate SIREN usage when conferencing. PCMA or PCMU
+-	 * seems to work properly in this scenario.
+-	 */
+ 	while (i) {
+ 		PurpleMediaCodec *codec = i->data;
+ 		gchar *encoding_name = purple_media_codec_get_encoding_name(codec);
+ 
+-		if (sipe_strequal(encoding_name,"THEORA") ||
+-		    (is_conference && sipe_strequal(encoding_name,"SIREN"))) {
+-			GList *tmp;
+-			g_object_unref(codec);
+-			tmp = i->next;
+-			codecs = g_list_delete_link(codecs, i);
+-			i = tmp;
+-		} else if (sipe_strequal(encoding_name, "H264")) {
++		if (sipe_strequal(encoding_name, "H264")) {
+ 			/*
+ 			 * Sanitize H264 codec:
+ 			 * - the encoding name must be "X-H264UC"
+-- 
+2.21.0
+

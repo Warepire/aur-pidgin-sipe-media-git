@@ -1,0 +1,82 @@
+From 0c899fc87fcfd4edff3d5fcf1cadff0ca12e62d6 Mon Sep 17 00:00:00 2001
+From: Jakub Adam <jakub.adam@ktknet.cz>
+Date: Sun, 7 Oct 2018 13:54:04 +0200
+Subject: [PATCH 3/7] conf: parse media-source-id of participant video stream
+
+Upstream-Status: Inappropriate [Not mine to merge]
+Patch-URI: https://github.com/tieto/sipe/commit/0c899fc87fcfd4edff3d5fcf1cadff0ca12e62d6.patch
+---
+ src/core/sipe-conf.c    | 33 +++++++++++++++------------------
+ src/core/sipe-session.h |  1 +
+ 2 files changed, 16 insertions(+), 18 deletions(-)
+
+diff --git a/src/core/sipe-conf.c b/src/core/sipe-conf.c
+index 6ed29fda..12600bcf 100644
+--- a/src/core/sipe-conf.c
++++ b/src/core/sipe-conf.c
+@@ -1169,35 +1169,32 @@ process_conference_av_endpoint(const sipe_xml *endpoint,
+ 			       struct sip_session *session)
+ {
+ 	const sipe_xml *media;
+-	const gchar *new_entity;
+ 
+-	if (!sipe_strequal(user_uri, self_uri)) {
+-		/* We are interested only in our own endpoint data. */
+-		return;
+-	}
++	if (sipe_strequal(user_uri, self_uri)) {
++		const gchar *new_entity = sipe_xml_attribute(endpoint, "entity");
+ 
+-	new_entity = sipe_xml_attribute(endpoint, "entity");
+-	if (!sipe_strequal(session->audio_video_entity, new_entity)) {
+-		g_free(session->audio_video_entity);
+-		session->audio_video_entity = g_strdup(new_entity);
++		if (!sipe_strequal(session->audio_video_entity, new_entity)) {
++			g_free(session->audio_video_entity);
++			session->audio_video_entity = g_strdup(new_entity);
++		}
+ 	}
+ 
+-	session->audio_media_id = 0;
+-
+ 	media = sipe_xml_child(endpoint, "media");
+ 	for (; media; media = sipe_xml_twin(media)) {
+ 		gchar *type = sipe_xml_data(sipe_xml_child(media, "type"));
+ 
+-		if (sipe_strequal(type, "audio")) {
+-			session->audio_media_id =
+-					sipe_xml_int_attribute(media, "id", 0);
++		if (sipe_strequal(type, "audio") && sipe_strequal(user_uri, self_uri)) {
++			session->audio_media_id = sipe_xml_int_attribute(media, "id", 0);
++		} else if (sipe_strequal(type, "video") && session->video_media_source_id == 0) {
++			const sipe_xml *child = sipe_xml_child(media, "media-source-id");
++			const gchar *data = sipe_xml_data(child);
++
++			if (data) {
++				session->video_media_source_id = atoi(data);
++			}
+ 		}
+ 
+ 		g_free(type);
+-
+-		if (session->audio_media_id != 0) {
+-			break;
+-		}
+ 	}
+ }
+ 
+diff --git a/src/core/sipe-session.h b/src/core/sipe-session.h
+index d0faedc8..ad90b36e 100644
+--- a/src/core/sipe-session.h
++++ b/src/core/sipe-session.h
+@@ -70,6 +70,7 @@ struct sip_session {
+ 	GHashTable *conf_unconfirmed_messages;
+ 	gchar *audio_video_entity;
+ 	guint audio_media_id;
++	guint video_media_source_id;
+ 
+ 	/*
+ 	 * Media call related fields
+-- 
+2.21.0
+
